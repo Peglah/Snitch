@@ -5,28 +5,22 @@
  * http://www.geekstips.com/arduino-time-sync-ntp-server-esp8266-udp/
  */
 
-#include <Adafruit_NeoPixel.h> 
+#include <Adafruit_NeoPixel.h>
+
 #include <ESP8266WiFi.h>
 #include <WiFiUdp.h>
+
+#include <TimeLib.h>
 
 char ssid[] = "*************";  //  your network SSID (name)
 char pass[] = "********";       // your network password
 
 
-/*
- * Time_NTP.pde
- * Example showing time sync to NTP time source
- *
- * This sketch uses the Ethernet library
- */
- 
-#include <TimeLib.h>
-#include <Ethernet.h>
-#include <EthernetUdp.h>
-#include <SPI.h>
+
 
 byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED }; 
 // NTP Servers:
+//IPAddress timeServer(91, 209, 0, 19); // 0.se.pool.ntp.org
 IPAddress timeServer(132, 163, 4, 101); // time-a.timefreq.bldrdoc.gov
 // IPAddress timeServer(132, 163, 4, 102); // time-b.timefreq.bldrdoc.gov
 // IPAddress timeServer(132, 163, 4, 103); // time-c.timefreq.bldrdoc.gov
@@ -40,7 +34,7 @@ const int timeZone = 1;     // Central European Time
 
 
 WiFiUdp Udp;
-unsigned int localPort = 8888;  // local port to listen for UDP packets
+unsigned int localPort = 8888;  // local port to listen for UDP packets (Why not port 123 (NTP)?)
 
 void setup() 
 {
