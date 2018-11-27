@@ -1,9 +1,9 @@
 /*
- * Snitch
- * Simple Night Watch. An Arduino sketch for the Adafruit Feather HUZZAH with ESP8266 telling you the time using binary LEDs.
- *
- * http://www.geekstips.com/arduino-time-sync-ntp-server-esp8266-udp/
- */
+   Snitch
+   Simple Night Watch. An Arduino sketch for the Adafruit Feather HUZZAH with ESP8266 telling you the time using binary LEDs.
+
+   http://www.geekstips.com/arduino-time-sync-ntp-server-esp8266-udp/
+*/
 
 #include <Adafruit_NeoPixel.h>
 
@@ -12,19 +12,16 @@
 
 #include <TimeLib.h>
 
-char ssid[] = "*************";  //  your network SSID (name)
-char pass[] = "********";       // your network password
+// Network
+const char* ssid = "your-wifi";
+const char* wifiPassword = "wifi-password";
 
-
-
-
-byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED }; 
+byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
 // NTP Servers:
 //IPAddress timeServer(91, 209, 0, 19); // 0.se.pool.ntp.org
 IPAddress timeServer(132, 163, 4, 101); // time-a.timefreq.bldrdoc.gov
 // IPAddress timeServer(132, 163, 4, 102); // time-b.timefreq.bldrdoc.gov
 // IPAddress timeServer(132, 163, 4, 103); // time-c.timefreq.bldrdoc.gov
-
 
 const int timeZone = 1;     // Central European Time
 //const int timeZone = -5;  // Eastern Standard Time (USA)
@@ -32,17 +29,36 @@ const int timeZone = 1;     // Central European Time
 //const int timeZone = -8;  // Pacific Standard Time (USA)
 //const int timeZone = -7;  // Pacific Daylight Time (USA)
 
-
-WiFiUdp Udp;
 unsigned int localPort = 8888;  // local port to listen for UDP packets (Why not port 123 (NTP)?)
 
-void setup() 
-{
+void connectWifi() {
+  Serial.println();
+  Serial.println();
+  Serial.print("Connecting to ");
+  Serial.println(ssid);
+
+  //WiFi.hostname("");
+  WiFi.begin(ssid, wifiPassword);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println("");
+  Serial.println("WiFi connected");
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP());
+}
+
+WiFiUdp udp;
+
+void setup() {
   Serial.begin(9600);
   while (!Serial) ; // Needed for Leonardo only
   delay(250);
   Serial.println("TimeNTP Example");
-  if (Ethernet.begin(mac) == 0) {
+  if (WiFi.begin(mac) == 0) {
     // no point in carrying on, so do nothing forevermore:
     while (1) {
       Serial.println("Failed to configure Ethernet using DHCP");
@@ -50,8 +66,8 @@ void setup()
     }
   }
   Serial.print("IP number assigned by DHCP is ");
-  Serial.println(Ethernet.localIP());
-  Udp.begin(localPort);
+  Serial.println(WiFi.localIP());
+  WiFi.begin(localPort);
   Serial.println("waiting for sync");
   setSyncProvider(getNtpTime);
 }
@@ -59,16 +75,16 @@ void setup()
 time_t prevDisplay = 0; // when the digital clock was displayed
 
 void loop()
-{  
+{
   if (timeStatus() != timeNotSet) {
     if (now() != prevDisplay) { //update the display only if time has changed
       prevDisplay = now();
-      digitalClockDisplay();  
+      digitalClockDisplay();
     }
   }
 }
 
-void digitalClockDisplay(){
+void digitalClockDisplay() {
   // digital clock display of the time
   Serial.print(hour());
   printDigits(minute());
@@ -78,14 +94,14 @@ void digitalClockDisplay(){
   Serial.print(" ");
   Serial.print(month());
   Serial.print(" ");
-  Serial.print(year()); 
-  Serial.println(); 
+  Serial.print(year());
+  Serial.println();
 }
 
-void printDigits(int digits){
+void printDigits(int digits) {
   // utility for digital clock display: prints preceding colon and leading 0
   Serial.print(":");
-  if(digits < 10)
+  if (digits < 10)
     Serial.print('0');
   Serial.print(digits);
 }
@@ -136,7 +152,7 @@ void sendNTPpacket(IPAddress &address)
   packetBuffer[14]  = 49;
   packetBuffer[15]  = 52;
   // all NTP fields have been given values, now
-  // you can send a packet requesting a timestamp:                 
+  // you can send a packet requesting a timestamp:
   Udp.beginPacket(address, 123); //NTP requests are to port 123
   Udp.write(packetBuffer, NTP_PACKET_SIZE);
   Udp.endPacket();
