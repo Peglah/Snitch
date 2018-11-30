@@ -62,6 +62,7 @@ void setup() {
   timeClient.update();
 
   strip.begin();
+  strip.setBrightness(64);
   strip.show(); // Initialize all pixels to 'off'
 }
 
