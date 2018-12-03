@@ -12,7 +12,8 @@
 const char* ssid     = "REPLACE_WITH_YOUR_SSID";
 const char* password = "REPLACE_WITH_YOUR_PASSWORD";
 
-int neoPin = 13;
+int neoPin = 12;
+int neoBrightness = 16;
 
 unsigned long previousMillis = 0;               // will store last time
 const unsigned long interval = 10 * 60 * 1000;  // interval at which to run (milliseconds)
@@ -62,7 +63,7 @@ void setup() {
   timeClient.update();
 
   strip.begin();
-  strip.setBrightness(64);
+  strip.setBrightness(neoBrightness);
   strip.show(); // Initialize all pixels to 'off'
 }
 
@@ -113,10 +114,10 @@ void loop() {
     if (sMinutes[i] == '0') {
       strip.setPixelColor(i + 8, ledOff);
     }
-    if (sHours[i] == '1') {
+    if (sMinutes[i] == '1') {
       strip.setPixelColor(i + 8, ledOn);
     }
-    if (sHours[i] == '-') {
+    if (sMinutes[i] == '-') {
       strip.setPixelColor(i + 8, ledOther);
     }
   }
