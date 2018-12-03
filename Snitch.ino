@@ -14,7 +14,7 @@ const char* password = "REPLACE_WITH_YOUR_PASSWORD";
 
 int neoPin = 12;
 int neoCount = 16;
-int neoBrightness = 8;
+int neoBrightness = 1;
 
 unsigned long previousMillis = 0;               // will store last time
 const unsigned long interval = 10 * 60 * 1000;  // interval at which to run (milliseconds)
