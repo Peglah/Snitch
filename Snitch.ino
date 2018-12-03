@@ -6,14 +6,15 @@
 #include <WiFi.h>
 #include <NTPClient.h>
 #include <WiFiUdp.h>
-#include <Adafruit_NeoPixel.h>
+#include <NeoPixelBus.h>
 
 // Replace with your network credentials
 const char* ssid     = "REPLACE_WITH_YOUR_SSID";
 const char* password = "REPLACE_WITH_YOUR_PASSWORD";
 
 int neoPin = 12;
-int neoBrightness = 16;
+int neoCount = 16;
+int neoBrightness = 8;
 
 unsigned long previousMillis = 0;               // will store last time
 const unsigned long interval = 10 * 60 * 1000;  // interval at which to run (milliseconds)
@@ -26,18 +27,12 @@ WiFiUDP ntpUDP;
 // update interval (in milliseconds, can be changed using setUpdateInterval() ).
 NTPClient timeClient(ntpUDP, "se.pool.ntp.org", 3600, 60000);
 
-// Parameter 1 = number of pixels in strip
-// Parameter 2 = pin number (most are valid)
-// Parameter 3 = pixel type flags, add together as needed:
-//   NEO_KHZ800  800 KHz bitstream (most NeoPixel products w/WS2812 LEDs)
-//   NEO_KHZ400  400 KHz (classic 'v1' (not v2) FLORA pixels, WS2811 drivers)
-//   NEO_GRB     Pixels are wired for GRB bitstream (most NeoPixel products)
-//   NEO_RGB     Pixels are wired for RGB bitstream (v1 FLORA pixels, not v2)
-Adafruit_NeoPixel strip = Adafruit_NeoPixel(16, neoPin, NEO_GRB + NEO_KHZ800);
+NeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> strip(neoCount, neoPin);
+//NeoPixelBus<NeoRgbFeature, Neo400KbpsMethod> strip(PixelCount, PixelPin);
 
-uint32_t ledOff = strip.Color(255, 0, 0);
-uint32_t ledOn = strip.Color(0, 255, 0);
-uint32_t ledOther = strip.Color(0, 0, 255);
+RgbColor ledOff(neoBrightness, 0, 0);
+RgbColor ledOn(0, neoBrightness, 0);
+RgbColor ledOther(0, 0, neoBrightness);
 
 void setup() {
   // Initialize Serial Monitor
@@ -62,9 +57,8 @@ void setup() {
   timeClient.begin();
   timeClient.update();
 
-  strip.begin();
-  strip.setBrightness(neoBrightness);
-  strip.show(); // Initialize all pixels to 'off'
+  strip.Begin();
+  strip.Show(); // Initialize all pixels to 'off'
 }
 
 void loop() {
@@ -100,25 +94,25 @@ void loop() {
 
   for (int i = 0; i < sHours.length(); i++) {
     if (sHours[i] == '0') {
-      strip.setPixelColor(i, ledOff);
+      strip.SetPixelColor(i, ledOff);
     }
     if (sHours[i] == '1') {
-      strip.setPixelColor(i, ledOn);
+      strip.SetPixelColor(i, ledOn);
     }
     if (sHours[i] == '-') {
-      strip.setPixelColor(i, ledOther);
+      strip.SetPixelColor(i, ledOther);
     }
   }
 
   for (int i = 0; i < sMinutes.length(); i++) {
     if (sMinutes[i] == '0') {
-      strip.setPixelColor(i + 8, ledOff);
+      strip.SetPixelColor(i + 8, ledOff);
     }
     if (sMinutes[i] == '1') {
-      strip.setPixelColor(i + 8, ledOn);
+      strip.SetPixelColor(i + 8, ledOn);
     }
     if (sMinutes[i] == '-') {
-      strip.setPixelColor(i + 8, ledOther);
+      strip.SetPixelColor(i + 8, ledOther);
     }
   }
 
@@ -128,7 +122,6 @@ void loop() {
   Serial.print(" ");
   Serial.println(timeClient.getSeconds());
 
-  strip.show();
-
+  strip.Show();
   delay(1000);
 }
