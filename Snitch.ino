@@ -41,7 +41,7 @@ void setup() {
   Serial.print("Connecting to ");
   Serial.println(ssid);
   WiFi.begin(ssid, password);
-  //WiFi.hostname("ESP32-Snitch");
+  WiFi.setHostname("ESP32-Snitch");
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
