@@ -6,8 +6,8 @@
 #include <ArduinoJson.h>
 
 // Replace with your network credentials
-const char* ssid     = "Naturlig Fetthalt";
-const char* password = "0705698630";
+const char* ssid     = "REPLACE_WITH_YOUR_SSID";
+const char* password = "REPLACE_WITH_YOUR_PASSWORD";
 
 int neoCount = 16;
 int neoPin = 12;
