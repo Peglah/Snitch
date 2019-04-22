@@ -25,8 +25,8 @@ const unsigned long tempInterval = 5* 60 * 1000;  // interval at which to run (m
 unsigned long displayPreviousMillis = 0;               // will store last time
 const unsigned long displayInterval = 60 * 1000;  // interval at which to run (milliseconds)
 
-String CityID = "2702776";  //Jursla, SE
-String APIKEY = "530be579d28b41d61f62faf4a31e712a";
+String CityID = "REPLACE_WITH_YOUR_CITY";  //Jursla, SE
+String APIKEY = "REPLACE_WITH_YOUR_API_KEY";
 
 WiFiClient client;
 const char* servername = "api.openweathermap.org"; // remote server we will connect to
