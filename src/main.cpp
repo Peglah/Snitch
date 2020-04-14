@@ -6,8 +6,8 @@
 #include <ArduinoJson.h>
 
 // Replace with your network credentials
-const char* ssid     = "REPLACE_WITH_YOUR_SSID";
-const char* password = "REPLACE_WITH_YOUR_PASSWORD";
+const char* SSID     = "REPLACE_WITH_YOUR_SSID";
+const char* PASSWORD = "REPLACE_WITH_YOUR_PASSWORD";
 
 int neoCount = 16;
 int neoPin = 12;
@@ -25,14 +25,17 @@ const unsigned long tempInterval = 5* 60 * 1000;  // interval at which to run (m
 unsigned long displayPreviousMillis = 0;               // will store last time
 const unsigned long displayInterval = 60 * 1000;  // interval at which to run (milliseconds)
 
+// Timer for when to check for wifi connection
+unsigned long wifiPreviousMillis = 0;               // will store last time
+const unsigned long wifiInterval = 10 * 1000;       // interval at which to run (milliseconds) (default 60 sec)
+
 String CityID = "REPLACE_WITH_YOUR_CITY";  //Jursla, SE
 String APIKEY = "REPLACE_WITH_YOUR_API_KEY";
 
-WiFiClient client;
+WiFiClient client; // Used to get temperature
 const char* servername = "api.openweathermap.org"; // remote server we will connect to
 
-// Define NTP Client to get time
-WiFiUDP ntpUDP;
+WiFiUDP ntpUDP; // Used by NTPClient to get time
 
 // You can specify the time server pool and the offset (in seconds, can be
 // changed later with setTimeOffset() ). Additionaly you can specify the
@@ -54,55 +57,6 @@ RgbColor black(0);
 
 bool doTime = true;
 int temperature = -273;
-
-void drawTemperature(int temperature) {
-  if (temperature >= neoCount + 1) {
-    // Up and red
-    for (int i = 0; i < neoCount; i++) {
-      if (temperature - 16 > i) {
-        strip.SetPixelColor(i, red);
-      }
-      else {
-        strip.SetPixelColor(i, black);
-      }
-    }
-  }
-  else if (temperature >= 1 && temperature <= neoCount) {
-    // Up and green
-    for (int i = 0; i < neoCount; i++) {
-      if (temperature > i) {
-        strip.SetPixelColor(i, green);
-      }
-      else {
-        strip.SetPixelColor(i, black);
-      }
-    }
-  }
-  else if (temperature == 0) {
-    // All off
-    for (int i = 0; i < neoCount; i++) {
-      strip.SetPixelColor(i, black);
-    }
-  }
-  else if (temperature <= -1 && temperature >= -16) {
-    // Down and blue
-    for (int i = neoCount - 1; i >= 0; i--) {
-      if (temperature < 0) {
-        strip.SetPixelColor(i, blue);
-        temperature++;
-      }
-      else {
-        strip.SetPixelColor(i, black);
-      }
-    }
-  }
-  else if (temperature == -273) {
-    for (int i = 0; i < 16; i = i + 2) {
-      strip.SetPixelColor(i, blue);
-      strip.SetPixelColor(i + 1, black);
-    }
-  }
-}
 
 float computeHeatIndex(float temperature, int percentHumidity) {
   temperature = temperature * 1.8 + 32;
@@ -190,6 +144,55 @@ int getTemperature() {
   }
 }
 
+void drawTemperature(int temperature) {
+  if (temperature >= neoCount + 1) {
+    // Up and red
+    for (int i = 0; i < neoCount; i++) {
+      if (temperature - 16 > i) {
+        strip.SetPixelColor(i, red);
+      }
+      else {
+        strip.SetPixelColor(i, black);
+      }
+    }
+  }
+  else if (temperature >= 1 && temperature <= neoCount) {
+    // Up and green
+    for (int i = 0; i < neoCount; i++) {
+      if (temperature > i) {
+        strip.SetPixelColor(i, green);
+      }
+      else {
+        strip.SetPixelColor(i, black);
+      }
+    }
+  }
+  else if (temperature == 0) {
+    // All off
+    for (int i = 0; i < neoCount; i++) {
+      strip.SetPixelColor(i, black);
+    }
+  }
+  else if (temperature <= -1 && temperature >= -16) {
+    // Down and blue
+    for (int i = neoCount - 1; i >= 0; i--) {
+      if (temperature < 0) {
+        strip.SetPixelColor(i, blue);
+        temperature++;
+      }
+      else {
+        strip.SetPixelColor(i, black);
+      }
+    }
+  }
+  else if (temperature == -273) {
+    for (int i = 0; i < 16; i = i + 2) {
+      strip.SetPixelColor(i, blue);
+      strip.SetPixelColor(i + 1, black);
+    }
+  }
+}
+
 void drawTime(String sHours, String sMinutes) {
   while (5 - sHours.length() > 0) {
     sHours = "0" + sHours;
@@ -230,24 +233,39 @@ void drawTime(String sHours, String sMinutes) {
   }
 }
 
-void setup() {
-  // Initialize Serial Monitor
-  Serial.begin(115200);
-  while (!Serial);
+void connectWifi() {
   Serial.print("Connecting to ");
-  Serial.println(ssid);
-  WiFi.begin(ssid, password);
+  Serial.println(SSID);
+  WiFi.begin(SSID, PASSWORD);
   WiFi.setHostname("ESP32-Snitch");
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
   }
 
-  // Print local IP address and start web server
   Serial.println("");
   Serial.println("WiFi connected.");
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
+}
+
+void checkWifi() {
+  Serial.print("Wifi status = ");
+  Serial.println(WiFi.status());
+  if ((WiFi.status() != WL_CONNECTED)) {
+    Serial.println("Reconnecting to WiFi...");
+    WiFi.disconnect();
+    connectWifi();
+  }
+}
+
+void setup() {
+  // Initialize Serial Monitor
+  Serial.begin(115200);
+  while (!Serial);
+
+  // Connect to Wifi
+  connectWifi();
 
   // Initialize a NTPClient and get time
   timeClient.begin();
@@ -260,6 +278,12 @@ void setup() {
 }
 
 void loop() {
+  // Make sure Wifi is connected
+  if (millis() - wifiPreviousMillis >= wifiInterval) {
+    checkWifi();
+    wifiPreviousMillis = millis();
+  }
+
   // Don't update from internet every second. Instead update every
   // "interval" (default 10 mins).
   if (millis() - timePreviousMillis >= timeInterval) {
