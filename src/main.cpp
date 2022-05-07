@@ -1,13 +1,9 @@
 #include <Arduino.h>
-#include <WiFi.h>
+#include <WiFiManager.h>          //https://github.com/tzapu/WiFiManager WiFi Configuration Magic
 #include <NTPClient.h>
 #include <WiFiUdp.h>
 #include <NeoPixelBus.h>
 #include <ArduinoJson.h>
-
-// Replace with your network credentials
-const char* SSID     = "REPLACE_WITH_YOUR_SSID";
-const char* PASSWORD = "REPLACE_WITH_YOUR_PASSWORD";
 
 int neoCount = 16;
 int neoPin = 12;
@@ -29,8 +25,10 @@ const unsigned long displayInterval = 60 * 1000;  // interval at which to run (m
 unsigned long wifiPreviousMillis = 0;               // will store last time
 const unsigned long wifiInterval = 10 * 1000;       // interval at which to run (milliseconds) (default 60 sec)
 
-String CityID = "REPLACE_WITH_YOUR_CITY";  //Jursla, SE
+String CityID = "REPLACE_WITH_YOUR_CITY";
 String APIKEY = "REPLACE_WITH_YOUR_API_KEY";
+
+WiFiManager wifiManager;  // Initialize library
 
 WiFiClient client; // Used to get temperature
 const char* servername = "api.openweathermap.org"; // remote server we will connect to
@@ -233,39 +231,13 @@ void drawTime(String sHours, String sMinutes) {
   }
 }
 
-void connectWifi() {
-  Serial.print("Connecting to ");
-  Serial.println(SSID);
-  WiFi.begin(SSID, PASSWORD);
-  WiFi.setHostname("ESP32-Snitch");
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
-
-  Serial.println("");
-  Serial.println("WiFi connected.");
-  Serial.println("IP address: ");
-  Serial.println(WiFi.localIP());
-}
-
-void checkWifi() {
-  Serial.print("Wifi status = ");
-  Serial.println(WiFi.status());
-  if ((WiFi.status() != WL_CONNECTED)) {
-    Serial.println("Reconnecting to WiFi...");
-    WiFi.disconnect();
-    connectWifi();
-  }
-}
-
 void setup() {
   // Initialize Serial Monitor
   Serial.begin(115200);
   while (!Serial);
 
   // Connect to Wifi
-  connectWifi();
+  wifiManager.autoConnect();
 
   // Initialize a NTPClient and get time
   timeClient.begin();
@@ -278,12 +250,6 @@ void setup() {
 }
 
 void loop() {
-  // Make sure Wifi is connected
-  if (millis() - wifiPreviousMillis >= wifiInterval) {
-    checkWifi();
-    wifiPreviousMillis = millis();
-  }
-
   // Don't update from internet every second. Instead update every
   // "interval" (default 10 mins).
   if (millis() - timePreviousMillis >= timeInterval) {
