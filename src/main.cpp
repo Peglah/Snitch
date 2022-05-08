@@ -1,13 +1,9 @@
 #include <Arduino.h>
-#include <WiFi.h>
+#include <WiFiManager.h>          //https://github.com/tzapu/WiFiManager WiFi Configuration Magic
 #include <NTPClient.h>
 #include <WiFiUdp.h>
 #include <NeoPixelBus.h>
 #include <ArduinoJson.h>
-
-// Replace with your network credentials
-const char* SSID     = "REPLACE_WITH_YOUR_SSID";
-const char* PASSWORD = "REPLACE_WITH_YOUR_PASSWORD";
 
 int neoCount = 16;
 int neoPin = 12;
@@ -24,10 +20,6 @@ const unsigned long tempInterval = 5* 60 * 1000;  // interval at which to run (m
 // Timer for when to switch between time and temperature
 unsigned long displayPreviousMillis = 0;               // will store last time
 const unsigned long displayInterval = 60 * 1000;  // interval at which to run (milliseconds)
-
-// Timer for when to check for wifi connection
-unsigned long wifiPreviousMillis = 0;               // will store last time
-const unsigned long wifiInterval = 10 * 1000;       // interval at which to run (milliseconds) (default 60 sec)
 
 String CityID = "REPLACE_WITH_YOUR_CITY";  //Jursla, SE
 String APIKEY = "REPLACE_WITH_YOUR_API_KEY";
@@ -234,28 +226,36 @@ void drawTime(String sHours, String sMinutes) {
 }
 
 void connectWifi() {
-  Serial.print("Connecting to ");
-  Serial.println(SSID);
-  WiFi.begin(SSID, PASSWORD);
-  WiFi.setHostname("ESP32-Snitch");
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
+  WiFi.mode(WIFI_STA); // explicitly set mode, esp defaults to STA+AP
+  // it is a good practice to make sure your code sets wifi mode how you want it.
 
-  Serial.println("");
-  Serial.println("WiFi connected.");
-  Serial.println("IP address: ");
-  Serial.println(WiFi.localIP());
-}
+  //WiFiManager, Local intialization. Once its business is done, there is no need to keep it around
+  WiFiManager wifiManager;
 
-void checkWifi() {
-  Serial.print("Wifi status = ");
-  Serial.println(WiFi.status());
-  if ((WiFi.status() != WL_CONNECTED)) {
-    Serial.println("Reconnecting to WiFi...");
-    WiFi.disconnect();
-    connectWifi();
+  // set a custom hostname, sets sta and ap dhcp client id for esp32, and sta for esp8266
+  wifiManager.setHostname("ESP32-Snitch");
+
+  // reset settings - wipe stored credentials for testing
+  // these are stored by the esp library
+  wifiManager.resetSettings();
+
+  // Automatically connect using saved credentials,
+  // if connection fails, it starts an access point with the specified name ( "AutoConnectAP"),
+  // if empty will auto generate SSID, if password is blank it will be anonymous AP (wm.autoConnect())
+  // then goes into a blocking loop awaiting configuration and will return success result
+
+  bool res;
+  // res = wm.autoConnect(); // auto generated AP name from chipid
+  // res = wm.autoConnect("AutoConnectAP"); // anonymous ap
+  res = wifiManager.autoConnect("AutoConnectAP","password"); // password protected ap
+
+  if(!res) {
+      Serial.println("Failed to connect");
+      // ESP.restart();
+  } 
+  else {
+      //if you get here you have connected to the WiFi    
+      Serial.println("connected...yeey :)");
   }
 }
 
@@ -278,12 +278,6 @@ void setup() {
 }
 
 void loop() {
-  // Make sure Wifi is connected
-  if (millis() - wifiPreviousMillis >= wifiInterval) {
-    checkWifi();
-    wifiPreviousMillis = millis();
-  }
-
   // Don't update from internet every second. Instead update every
   // "interval" (default 10 mins).
   if (millis() - timePreviousMillis >= timeInterval) {
