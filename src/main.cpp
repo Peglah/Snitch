@@ -2,16 +2,16 @@
 #include <WiFi.h>
 #include <NTPClient.h>
 #include <WiFiUdp.h>
-#include <NeoPixelBus.h>
+#include <FastLED.h>
 #include <ArduinoJson.h>
 
 // Replace with your network credentials
 const char* SSID     = "REPLACE_WITH_YOUR_SSID";
 const char* PASSWORD = "REPLACE_WITH_YOUR_PASSWORD";
 
-int neoCount = 16;
-int neoPin = 12;
-int colorSaturation = 1;
+#define NUM_LEDS 16
+#define DATA_PIN 12
+CRGB leds[NUM_LEDS];
 
 // Timer for when to update NTP
 unsigned long timePreviousMillis = 0;               // will store last time
@@ -41,19 +41,6 @@ WiFiUDP ntpUDP; // Used by NTPClient to get time
 // changed later with setTimeOffset() ). Additionaly you can specify the
 // update interval (in milliseconds, can be changed using setUpdateInterval() ).
 NTPClient timeClient(ntpUDP, "se.pool.ntp.org", 7200, 60000);
-
-NeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> strip(neoCount, neoPin);
-//NeoPixelBus<NeoRgbFeature, Neo400KbpsMethod> strip(PixelCount, PixelPin);
-
-RgbColor ledOff(colorSaturation, 0, 0);
-RgbColor ledOn(0, colorSaturation, 0);
-RgbColor ledOther(0, 0, colorSaturation);
-
-RgbColor red(colorSaturation, 0, 0);
-RgbColor green(0, colorSaturation, 0);
-RgbColor blue(0, 0, colorSaturation);
-RgbColor white(colorSaturation);
-RgbColor black(0);
 
 bool doTime = true;
 int temperature = -273;
@@ -145,50 +132,50 @@ int getTemperature() {
 }
 
 void drawTemperature(int temperature) {
-  if (temperature >= neoCount + 1) {
+  if (temperature >= NUM_LEDS + 1) {
     // Up and red
-    for (int i = 0; i < neoCount; i++) {
+    for (int i = 0; i < NUM_LEDS; i++) {
       if (temperature - 16 > i) {
-        strip.SetPixelColor(i, red);
+        leds[i].setRGB(1, 0, 0);
       }
       else {
-        strip.SetPixelColor(i, black);
+        leds[i] = CRGB::Black;
       }
     }
   }
-  else if (temperature >= 1 && temperature <= neoCount) {
+  else if (temperature >= 1 && temperature <= NUM_LEDS) {
     // Up and green
-    for (int i = 0; i < neoCount; i++) {
+    for (int i = 0; i < NUM_LEDS; i++) {
       if (temperature > i) {
-        strip.SetPixelColor(i, green);
+        leds[i].setRGB(0, 1, 0);
       }
       else {
-        strip.SetPixelColor(i, black);
+        leds[i] = CRGB::Black;
       }
     }
   }
   else if (temperature == 0) {
     // All off
-    for (int i = 0; i < neoCount; i++) {
-      strip.SetPixelColor(i, black);
+    for (int i = 0; i < NUM_LEDS; i++) {
+      leds[i] = CRGB::Black;
     }
   }
   else if (temperature <= -1 && temperature >= -16) {
     // Down and blue
-    for (int i = neoCount - 1; i >= 0; i--) {
+    for (int i = NUM_LEDS - 1; i >= 0; i--) {
       if (temperature < 0) {
-        strip.SetPixelColor(i, blue);
+        leds[i].setRGB(0, 0, 1);
         temperature++;
       }
       else {
-        strip.SetPixelColor(i, black);
+        leds[i] = CRGB::Black;
       }
     }
   }
   else if (temperature == -273) {
     for (int i = 0; i < 16; i = i + 2) {
-      strip.SetPixelColor(i, blue);
-      strip.SetPixelColor(i + 1, black);
+      leds[i].setRGB(0, 0, 1);
+      leds[i+1] = CRGB::Black;
     }
   }
 }
@@ -210,25 +197,25 @@ void drawTime(String sHours, String sMinutes) {
 
   for (int i = 0; i < sHours.length(); i++) {
     if (sHours[i] == '0') {
-      strip.SetPixelColor(i, ledOff);
+      leds[i].setRGB(1, 0, 0);
     }
     if (sHours[i] == '1') {
-      strip.SetPixelColor(i, ledOn);
+      leds[i].setRGB(0, 1, 0);
     }
     if (sHours[i] == '-') {
-      strip.SetPixelColor(i, ledOther);
+      leds[i].setRGB(0, 0, 1);
     }
   }
 
   for (int i = 0; i < sMinutes.length(); i++) {
     if (sMinutes[i] == '0') {
-      strip.SetPixelColor(i + 8, ledOff);
+      leds[i+8].setRGB(1, 0, 0);
     }
     if (sMinutes[i] == '1') {
-      strip.SetPixelColor(i + 8, ledOn);
+      leds[i+8].setRGB(0, 1, 0);
     }
     if (sMinutes[i] == '-') {
-      strip.SetPixelColor(i + 8, ledOther);
+      leds[i+8].setRGB(0, 0, 1);
     }
   }
 }
@@ -273,8 +260,7 @@ void setup() {
 
   temperature = getTemperature();
 
-  strip.Begin();
-  strip.Show(); // Initialize all pixels to 'off'
+  FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);
 }
 
 void loop() {
@@ -326,6 +312,6 @@ void loop() {
   Serial.println(timeClient.getSeconds());
   */
 
-  strip.Show();
+  FastLED.show();
   delay(1000);
 }
