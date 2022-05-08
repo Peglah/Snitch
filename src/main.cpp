@@ -5,10 +5,6 @@
 #include <FastLED.h>
 #include <ArduinoJson.h>
 
-// Replace with your network credentials
-const char* SSID     = "REPLACE_WITH_YOUR_SSID";
-const char* PASSWORD = "REPLACE_WITH_YOUR_PASSWORD";
-
 #define NUM_LEDS 16
 #define DATA_PIN 12
 CRGB leds[NUM_LEDS];
