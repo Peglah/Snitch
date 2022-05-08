@@ -6,3 +6,4 @@
 * [Adafruit HUZZAH32 – ESP32 Feather Board](https://www.adafruit.com/product/3405)
 * [NeoPixel Stick - 8 x 5050 RGB LED with Integrated Drivers](https://www.adafruit.com/product/1426)
 * [NeoPixelBus](https://github.com/Makuna/NeoPixelBus)
+* [WiFiManager](https://github.com/tzapu/WiFiManager)
