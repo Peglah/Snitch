@@ -1,9 +1,10 @@
+#include <SPIFFS.h>               //this needs to be first, or it all crashes and burns...
 #include <Arduino.h>
 #include <WiFiManager.h>          //https://github.com/tzapu/WiFiManager WiFi Configuration Magic
 #include <NTPClient.h>
 #include <WiFiUdp.h>
 #include <FastLED.h>
-#include <ArduinoJson.h>
+#include <ArduinoJson.h>          //https://github.com/bblanchon/ArduinoJson
 
 #define projectName "ESP32-Snitch"
 
@@ -23,8 +24,10 @@ const unsigned long tempInterval = 5* 60 * 1000;  // interval at which to run (m
 unsigned long displayPreviousMillis = 0;               // will store last time
 const unsigned long displayInterval = 60 * 1000;  // interval at which to run (milliseconds)
 
-String CityID = "REPLACE_WITH_YOUR_CITY";  //Jursla, SE
-String APIKEY = "REPLACE_WITH_YOUR_API_KEY";
+int CityID = 2673730;  //Stockholm, SE
+char APIKEY[32] = "PLACEHOLDER_FOR_APIKEY";
+
+bool shouldSaveConfig = false;
 
 WiFiClient client; // Used to get temperature
 const char* servername = "api.openweathermap.org"; // remote server we will connect to
@@ -38,6 +41,72 @@ NTPClient timeClient(ntpUDP, "se.pool.ntp.org", 7200, 60000);
 
 bool doTime = true;
 int temperature = -273;
+
+void saveConfigCallback() {
+  //callback notifying us of the need to save config
+  Serial.println("Should save config");
+  shouldSaveConfig = true;
+}
+
+bool readFS() {
+  //clean FS, for testing
+  //SPIFFS.format();
+
+  //read configuration from FS json
+  Serial.println("mounting FS...");
+
+  if (SPIFFS.begin()) {
+    Serial.println("mounted file system");
+    if (SPIFFS.exists("/config.json")) {
+      //file exists, reading and loading
+      Serial.println("reading config file");
+      File configFile = SPIFFS.open("/config.json", "r");
+      if (configFile) {
+        Serial.println("opened config file");
+        size_t size = configFile.size();
+        // Allocate a buffer to store contents of the file.
+        std::unique_ptr<char[]> buf(new char[size]);
+
+        configFile.readBytes(buf.get(), size);
+
+        DynamicJsonDocument json(1024);
+        auto deserializeError = deserializeJson(json, buf.get());
+        serializeJson(json, Serial);
+        if ( ! deserializeError ) {
+          Serial.println("\nparsed json");
+          CityID = json["CityID"].as<int>();
+          strcpy(APIKEY, json["APIKEY"]);
+          return true;
+        } 
+        else {
+          Serial.println("failed to load json config");
+        }
+        configFile.close();
+      }
+    }
+  }
+  else {
+    Serial.println("failed to mount FS");
+  }
+  return false;
+}
+
+void writeFS() {
+    DynamicJsonDocument json(1024);
+    json["cityid"] = CityID;
+    json["apikey"] = APIKEY;
+
+    Serial.println("Attempting to SPIFFS.open /config.json");
+    File configFile = SPIFFS.open("/config.json", "w");
+    if (!configFile) {
+      Serial.println("failed to open config file for writing");
+    }
+
+    serializeJson(json, Serial);
+    serializeJson(json, configFile);
+    configFile.close();
+    //end save
+}
 
 float computeHeatIndex(float temperature, int percentHumidity) {
   temperature = temperature * 1.8 + 32;
@@ -74,7 +143,7 @@ int getTemperature() {
 
   if (client.connect(servername, httpPort)) {
     // We now create a URI for the request
-    String url = "/data/2.5/weather?id=" + CityID + "&units=metric&APPID=" + APIKEY;
+    String url = "/data/2.5/weather?id=" + String(CityID) + "&units=metric&APPID=" + APIKEY;
 
     // This will send the request to the server
     client.print(String("GET ") + url + " HTTP/1.1\r\n" +
@@ -218,6 +287,13 @@ void connectWifi() {
   WiFi.mode(WIFI_STA); // explicitly set mode, esp defaults to STA+AP
   // it is a good practice to make sure your code sets wifi mode how you want it.
 
+  // Need to convert numerical input to string to display the default value.
+  char convertedValue[7];
+  sprintf(convertedValue, "%d", CityID); 
+
+  WiFiManagerParameter custom_cityid("cityid", "CityID", convertedValue, 7);
+  WiFiManagerParameter custom_apikey("apikey", "APIKEY", APIKEY, 32);
+
   //WiFiManager, Local intialization. Once its business is done, there is no need to keep it around
   WiFiManager wifiManager;
 
@@ -225,6 +301,13 @@ void connectWifi() {
   wifiManager.setHostname(projectName);
 
   wifiManager.setClass("invert"); // dark theme
+
+  //set config save notify callback
+  wifiManager.setSaveConfigCallback(saveConfigCallback);
+
+  //add all your parameters here
+  wifiManager.addParameter(&custom_cityid);
+  wifiManager.addParameter(&custom_apikey);
 
   // reset settings - wipe stored credentials for testing
   // these are stored by the esp library
@@ -237,18 +320,25 @@ void connectWifi() {
   // if empty will auto generate SSID, if password is blank it will be anonymous AP (wm.autoConnect())
   // then goes into a blocking loop awaiting configuration and will return success result
 
-  bool res;
-  // res = wm.autoConnect(); // auto generated AP name from chipid
-  // res = wm.autoConnect("AutoConnectAP"); // anonymous ap
-  res = wifiManager.autoConnect(projectName); // password protected ap
+  if (!wifiManager.autoConnect(projectName)) {
+    Serial.println("Failed to connect");
+    //ESP.restart();
+  }
 
-  if(!res) {
-      Serial.println("Failed to connect");
-      // ESP.restart();
-  } 
-  else {
-      //if you get here you have connected to the WiFi    
-      Serial.println("connected...yeey :)");
+  //if you get here you have connected to the WiFi
+  Serial.println("connected...yeey :)");
+
+  //read updated parameters
+  CityID = atoi(custom_cityid.getValue());
+  strcpy(APIKEY, custom_apikey.getValue());
+  Serial.println("The values in the file are: ");
+  Serial.println("\tCityID : " + String(CityID));
+  Serial.println("\tAPIKEY : " + String(APIKEY));
+
+  //save the custom parameters to FS
+  if (shouldSaveConfig) {
+    Serial.println("saving config");
+    writeFS();
   }
 }
 
