@@ -5,6 +5,8 @@
 #include <FastLED.h>
 #include <ArduinoJson.h>
 
+#define projectName "ESP32-Snitch"
+
 #define NUM_LEDS 16
 #define DATA_PIN 12
 CRGB leds[NUM_LEDS];
@@ -220,11 +222,15 @@ void connectWifi() {
   WiFiManager wifiManager;
 
   // set a custom hostname, sets sta and ap dhcp client id for esp32, and sta for esp8266
-  wifiManager.setHostname("ESP32-Snitch");
+  wifiManager.setHostname(projectName);
+
+  wifiManager.setClass("invert"); // dark theme
 
   // reset settings - wipe stored credentials for testing
   // these are stored by the esp library
   wifiManager.resetSettings();
+  //Debug is enabled by default on Serial in non-stable releases. To disable add before autoConnect/startConfigPortal
+  //wifiManager.setDebugOutput(false);
 
   // Automatically connect using saved credentials,
   // if connection fails, it starts an access point with the specified name ( "AutoConnectAP"),
@@ -234,7 +240,7 @@ void connectWifi() {
   bool res;
   // res = wm.autoConnect(); // auto generated AP name from chipid
   // res = wm.autoConnect("AutoConnectAP"); // anonymous ap
-  res = wifiManager.autoConnect("AutoConnectAP","password"); // password protected ap
+  res = wifiManager.autoConnect(projectName); // password protected ap
 
   if(!res) {
       Serial.println("Failed to connect");
@@ -299,9 +305,9 @@ void loop() {
   }
 
   /* TIME DEBUG
-  Serial.print(sHours);
+  Serial.print(timeClient.getHours());
   Serial.print(" ");
-  Serial.print(sMinutes);
+  Serial.print(timeClient.getMinutes());
   Serial.print(" ");
   Serial.println(timeClient.getSeconds());
   */
