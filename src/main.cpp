@@ -91,21 +91,33 @@ bool readFS() {
   return false;
 }
 
-void writeFS() {
-    DynamicJsonDocument json(1024);
-    json["cityid"] = CityID;
-    json["apikey"] = APIKEY;
+void writeFS()
+// Save Config in JSON format
+{
+  Serial.println(F("Saving configuration..."));
+  
+  // Create a JSON document
+  StaticJsonDocument<512> json;
+  json["cityid"] = CityID;
+  json["apikey"] = APIKEY;
 
-    Serial.println("Attempting to SPIFFS.open /config.json");
-    File configFile = SPIFFS.open("/config.json", "w");
-    if (!configFile) {
-      Serial.println("failed to open config file for writing");
-    }
+  // Open config file
+  File configFile = SPIFFS.open("/config.json", "w");
+  if (!configFile)
+  {
+    // Error, file did not open
+    Serial.println("failed to open config file for writing");
+  }
 
-    serializeJson(json, Serial);
-    serializeJson(json, configFile);
-    configFile.close();
-    //end save
+  // Serialize JSON data to write to file
+  serializeJsonPretty(json, Serial);
+  if (serializeJson(json, configFile) == 0)
+  {
+    // Error writing file
+    Serial.println(F("Failed to write to file"));
+  }
+  // Close file
+  configFile.close();
 }
 
 float computeHeatIndex(float temperature, int percentHumidity) {
