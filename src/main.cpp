@@ -283,7 +283,7 @@ void drawTime(String sHours, String sMinutes) {
   }
 }
 
-void connectWifi() {
+void runWiFiM() {
   WiFi.mode(WIFI_STA); // explicitly set mode, esp defaults to STA+AP
   // it is a good practice to make sure your code sets wifi mode how you want it.
 
@@ -348,7 +348,7 @@ void setup() {
   while (!Serial);
 
   // Connect to Wifi
-  connectWifi();
+  runWiFiM();
 
   // Initialize a NTPClient and get time
   timeClient.begin();
