@@ -24,10 +24,15 @@ const unsigned long tempInterval = 5* 60 * 1000;  // interval at which to run (m
 unsigned long displayPreviousMillis = 0;               // will store last time
 const unsigned long displayInterval = 60 * 1000;  // interval at which to run (milliseconds)
 
-int CityID = 2673730;  //Stockholm, SE
-char APIKEY[32] = "PLACEHOLDER_FOR_APIKEY";
-
+// Flag for saving data
 bool shouldSaveConfig = false;
+
+// Variables to hold data from custom textboxes
+char APIKEY[32] = "PLACEHOLDER_FOR_APIKEY";
+int CityID = 2673730;  //Stockholm, SE
+
+// Define WiFiManager Object
+WiFiManager wifiManager;
 
 WiFiClient client; // Used to get temperature
 const char* servername = "api.openweathermap.org"; // remote server we will connect to
@@ -42,82 +47,90 @@ NTPClient timeClient(ntpUDP, "se.pool.ntp.org", 7200, 60000);
 bool doTime = true;
 int temperature = -273;
 
-void saveConfigCallback() {
-  //callback notifying us of the need to save config
-  Serial.println("Should save config");
-  shouldSaveConfig = true;
-}
-
-bool readFS() {
-  //clean FS, for testing
-  //SPIFFS.format();
-
-  //read configuration from FS json
-  Serial.println("mounting FS...");
-
-  if (SPIFFS.begin()) {
-    Serial.println("mounted file system");
-    if (SPIFFS.exists("/config.json")) {
-      //file exists, reading and loading
-      Serial.println("reading config file");
-      File configFile = SPIFFS.open("/config.json", "r");
-      if (configFile) {
-        Serial.println("opened config file");
-        size_t size = configFile.size();
-        // Allocate a buffer to store contents of the file.
-        std::unique_ptr<char[]> buf(new char[size]);
-
-        configFile.readBytes(buf.get(), size);
-
-        DynamicJsonDocument json(1024);
-        auto deserializeError = deserializeJson(json, buf.get());
-        serializeJson(json, Serial);
-        if ( ! deserializeError ) {
-          Serial.println("\nparsed json");
-          CityID = json["CityID"].as<int>();
-          strcpy(APIKEY, json["APIKEY"]);
-          return true;
-        } 
-        else {
-          Serial.println("failed to load json config");
-        }
-        configFile.close();
-      }
-    }
-  }
-  else {
-    Serial.println("failed to mount FS");
-  }
-  return false;
-}
-
-void writeFS()
 // Save Config in JSON format
-{
+void saveConfigFile() {
   Serial.println(F("Saving configuration..."));
   
   // Create a JSON document
   StaticJsonDocument<512> json;
-  json["cityid"] = CityID;
-  json["apikey"] = APIKEY;
+  json["APIKEY"] = APIKEY;
+  json["CityID"] = CityID;
 
   // Open config file
   File configFile = SPIFFS.open("/config.json", "w");
-  if (!configFile)
-  {
+  if (!configFile) {
     // Error, file did not open
     Serial.println("failed to open config file for writing");
   }
 
   // Serialize JSON data to write to file
   serializeJsonPretty(json, Serial);
-  if (serializeJson(json, configFile) == 0)
-  {
+  if (serializeJson(json, configFile) == 0) {
     // Error writing file
     Serial.println(F("Failed to write to file"));
   }
   // Close file
   configFile.close();
+}
+
+// Load existing configuration file
+bool loadConfigFile() {
+  // Uncomment if we need to format filesystem
+  // SPIFFS.format();
+
+  // Read configuration from FS json
+  Serial.println("Mounting File System...");
+
+  // May need to make it begin(true) first time you are using SPIFFS
+  if (SPIFFS.begin(false) || SPIFFS.begin(true)) {
+    Serial.println("mounted file system");
+    if (SPIFFS.exists("/config.json")) {
+      // The file exists, reading and loading
+      Serial.println("reading config file");
+      File configFile = SPIFFS.open("/config.json", "r");
+      if (configFile) {
+        Serial.println("Opened configuration file");
+        StaticJsonDocument<512> json;
+        DeserializationError error = deserializeJson(json, configFile);
+        serializeJsonPretty(json, Serial);
+        if (!error) {
+          Serial.println("Parsing JSON");
+
+          strcpy(APIKEY, json["APIKEY"]);
+          CityID = json["CityID"].as<int>();
+
+          return true;
+        }
+        else {
+          // Error loading JSON data
+          Serial.println("Failed to load json config");
+        }
+      }
+    }
+  }
+  else {
+    // Error mounting file system
+    Serial.println("Failed to mount FS");
+  }
+
+  return false;
+}
+
+// Callback notifying us of the need to save configuration
+void saveConfigCallback() {
+  Serial.println("Should save config");
+  shouldSaveConfig = true;
+}
+
+// Called when config mode launched
+void configModeCallback(WiFiManager *myWiFiManager) {
+  Serial.println("Entered Configuration Mode");
+
+  Serial.print("Config SSID: ");
+  Serial.println(myWiFiManager->getConfigPortalSSID());
+
+  Serial.print("Config IP Address: ");
+  Serial.println(WiFi.softAPIP());
 }
 
 float computeHeatIndex(float temperature, int percentHumidity) {
@@ -295,62 +308,91 @@ void drawTime(String sHours, String sMinutes) {
   }
 }
 
+// Change to true when testing to force configuration every time we run
 void runWiFiM() {
-  WiFi.mode(WIFI_STA); // explicitly set mode, esp defaults to STA+AP
-  // it is a good practice to make sure your code sets wifi mode how you want it.
+  bool forceConfig = false;
 
-  // Need to convert numerical input to string to display the default value.
-  char convertedValue[7];
-  sprintf(convertedValue, "%d", CityID); 
-
-  WiFiManagerParameter custom_cityid("cityid", "CityID", convertedValue, 7);
-  WiFiManagerParameter custom_apikey("apikey", "APIKEY", APIKEY, 32);
-
-  //WiFiManager, Local intialization. Once its business is done, there is no need to keep it around
-  WiFiManager wifiManager;
-
-  // set a custom hostname, sets sta and ap dhcp client id for esp32, and sta for esp8266
-  wifiManager.setHostname(projectName);
-
-  wifiManager.setClass("invert"); // dark theme
-
-  //set config save notify callback
-  wifiManager.setSaveConfigCallback(saveConfigCallback);
-
-  //add all your parameters here
-  wifiManager.addParameter(&custom_cityid);
-  wifiManager.addParameter(&custom_apikey);
-
-  // reset settings - wipe stored credentials for testing
-  // these are stored by the esp library
-  wifiManager.resetSettings();
-  //Debug is enabled by default on Serial in non-stable releases. To disable add before autoConnect/startConfigPortal
-  //wifiManager.setDebugOutput(false);
-
-  // Automatically connect using saved credentials,
-  // if connection fails, it starts an access point with the specified name ( "AutoConnectAP"),
-  // if empty will auto generate SSID, if password is blank it will be anonymous AP (wm.autoConnect())
-  // then goes into a blocking loop awaiting configuration and will return success result
-
-  if (!wifiManager.autoConnect(projectName)) {
-    Serial.println("Failed to connect");
-    //ESP.restart();
+  bool spiffsSetup = loadConfigFile();
+  if (!spiffsSetup) {
+    Serial.println(F("Forcing config mode as there is no saved config"));
+    forceConfig = true;
   }
 
-  //if you get here you have connected to the WiFi
-  Serial.println("connected...yeey :)");
+  // Explicitly set WiFi mode
+  WiFi.mode(WIFI_STA);
 
-  //read updated parameters
-  CityID = atoi(custom_cityid.getValue());
-  strcpy(APIKEY, custom_apikey.getValue());
-  Serial.println("The values in the file are: ");
-  Serial.println("\tCityID : " + String(CityID));
-  Serial.println("\tAPIKEY : " + String(APIKEY));
+  // Setup Serial monitor
+  Serial.begin(115200);
+  delay(10);
 
-  //save the custom parameters to FS
+  // Reset settings (only for development)
+  wifiManager.resetSettings();
+
+  // Set config save notify callback
+  wifiManager.setSaveConfigCallback(saveConfigCallback);
+
+  // Set callback that gets called when connecting to previous WiFi fails, and enters Access Point mode
+  wifiManager.setAPCallback(configModeCallback);
+
+  // Custom elements
+
+  // Text box (String) - 50 characters maximum
+  WiFiManagerParameter custom_text_box("key_text", "Enter your string here", APIKEY, 50);
+  
+  // Need to convert numerical input to string to display the default value.
+  char convertedValue[6];
+  sprintf(convertedValue, "%d", CityID); 
+  
+  // Text box (Number) - 7 characters maximum
+  WiFiManagerParameter custom_text_box_num("key_num", "Enter your number here", convertedValue, 7); 
+
+  // Add all defined parameters
+  wifiManager.addParameter(&custom_text_box);
+  wifiManager.addParameter(&custom_text_box_num);
+
+  if (forceConfig) {
+    // Run if we need a configuration
+    if (!wifiManager.startConfigPortal(projectName)) {
+      Serial.println("failed to connect and hit timeout");
+      delay(3000);
+      //reset and try again, or maybe put it to deep sleep
+      //ESP.restart();
+      delay(5000);
+    }
+  }
+  else {
+    if (!wifiManager.autoConnect(projectName)) {
+      Serial.println("failed to connect and hit timeout");
+      delay(3000);
+      // if we still have not connected restart and try all over again
+      //ESP.restart();
+      delay(5000);
+    }
+  }
+
+  // If we get here, we are connected to the WiFi
+
+  Serial.println("");
+  Serial.println("WiFi connected");
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP());
+
+  // Lets deal with the user config values
+
+  // Copy the string value
+  strncpy(APIKEY, custom_text_box.getValue(), sizeof(APIKEY));
+  Serial.print("APIKEY: ");
+  Serial.println(APIKEY);
+
+  //Convert the number value
+  CityID = atoi(custom_text_box_num.getValue());
+  Serial.print("CityID: ");
+  Serial.println(CityID);
+
+
+  // Save the custom parameters to FS
   if (shouldSaveConfig) {
-    Serial.println("saving config");
-    writeFS();
+    saveConfigFile();
   }
 }
 
