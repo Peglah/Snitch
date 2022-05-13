@@ -321,10 +321,6 @@ void runWiFiM() {
   // Explicitly set WiFi mode
   WiFi.mode(WIFI_STA);
 
-  // Setup Serial monitor
-  Serial.begin(115200);
-  delay(10);
-
   // Reset settings (only for development)
   wifiManager.resetSettings();
 
@@ -337,7 +333,7 @@ void runWiFiM() {
   // Custom elements
 
   // Text box (String) - 50 characters maximum
-  WiFiManagerParameter custom_text_box("key_text", "Enter your string here", APIKEY, 50);
+  WiFiManagerParameter custom_text_box("key_text", "Enter your string here", APIKEY, 32);
   
   // Need to convert numerical input to string to display the default value.
   char convertedValue[6];
