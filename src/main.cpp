@@ -56,6 +56,9 @@ void saveConfigFile() {
   json["APIKEY"] = APIKEY;
   json["CityID"] = CityID;
 
+  Serial.print("saving APIKEY: ");
+  Serial.println(APIKEY);
+
   // Open config file
   File configFile = SPIFFS.open("/config.json", "w");
   if (!configFile) {
@@ -98,6 +101,9 @@ bool loadConfigFile() {
 
           strcpy(APIKEY, json["APIKEY"]);
           CityID = json["CityID"].as<int>();
+
+          Serial.print("loaded APIKEY: ");
+          Serial.println(APIKEY);
 
           return true;
         }
@@ -168,6 +174,8 @@ int getTemperature() {
 
   if (client.connect(servername, httpPort)) {
     // We now create a URI for the request
+    Serial.print("using APIKEY in url request: ");
+  Serial.println(APIKEY);
     String url = "/data/2.5/weather?id=" + String(CityID) + "&units=metric&APPID=" + APIKEY;
 
     // This will send the request to the server
@@ -375,6 +383,9 @@ void runWiFiM() {
 
   // Lets deal with the user config values
 
+  Serial.print("APIKEY before strncpy: ");
+  Serial.println(APIKEY);
+
   // Copy the string value
   strncpy(APIKEY, custom_text_box.getValue(), sizeof(APIKEY));
   Serial.print("APIKEY: ");
@@ -384,7 +395,6 @@ void runWiFiM() {
   CityID = atoi(custom_text_box_num.getValue());
   Serial.print("CityID: ");
   Serial.println(CityID);
-
 
   // Save the custom parameters to FS
   if (shouldSaveConfig) {
@@ -396,6 +406,9 @@ void setup() {
   // Initialize Serial Monitor
   Serial.begin(115200);
   while (!Serial);
+
+  Serial.print("APIKEY at start: ");
+  Serial.println(APIKEY);
 
   // Connect to Wifi
   runWiFiM();
