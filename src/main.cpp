@@ -28,16 +28,18 @@ const unsigned long displayInterval = 60 * 1000;  // interval at which to run (m
 bool shouldSaveConfig = false;
 
 // Variables to hold data from custom textboxes
-char APIKEY[32] = "PLACEHOLDER_FOR_APIKEY";
+char APIKEY[33] = "PLACEHOLDER_FOR_APIKEY"; // 32 + null terminator
 int CityID = 2673730;  //Stockholm, SE
 
 // Define WiFiManager Object
 WiFiManager wifiManager;
 
-WiFiClient client; // Used to get temperature
-const char* servername = "api.openweathermap.org"; // remote server we will connect to
+// Define WiFiClient Object, used to get temperature
+WiFiClient client; 
+const char* servername = "api.openweathermap.org";
 
-WiFiUDP ntpUDP; // Used by NTPClient to get time
+// Define WiFiUDP Object, used by NTPClient to get time
+WiFiUDP ntpUDP; 
 
 // You can specify the time server pool and the offset (in seconds, can be
 // changed later with setTimeOffset() ). Additionaly you can specify the
@@ -56,9 +58,6 @@ void saveConfigFile() {
   json["APIKEY"] = APIKEY;
   json["CityID"] = CityID;
 
-  Serial.print("saving APIKEY: ");
-  Serial.println(APIKEY);
-
   // Open config file
   File configFile = SPIFFS.open("/config.json", "w");
   if (!configFile) {
@@ -72,6 +71,7 @@ void saveConfigFile() {
     // Error writing file
     Serial.println(F("Failed to write to file"));
   }
+
   // Close file
   configFile.close();
 }
@@ -81,15 +81,15 @@ bool loadConfigFile() {
   // Uncomment if we need to format filesystem
   // SPIFFS.format();
 
-  // Read configuration from FS json
-  Serial.println("Mounting File System...");
+  // Read configuration from file system json
+  Serial.println("Mounting file system...");
 
   // May need to make it begin(true) first time you are using SPIFFS
   if (SPIFFS.begin(false) || SPIFFS.begin(true)) {
-    Serial.println("mounted file system");
+    Serial.println("Mounted file system");
     if (SPIFFS.exists("/config.json")) {
       // The file exists, reading and loading
-      Serial.println("reading config file");
+      Serial.println("Reading config file");
       File configFile = SPIFFS.open("/config.json", "r");
       if (configFile) {
         Serial.println("Opened configuration file");
@@ -97,13 +97,10 @@ bool loadConfigFile() {
         DeserializationError error = deserializeJson(json, configFile);
         serializeJsonPretty(json, Serial);
         if (!error) {
-          Serial.println("Parsing JSON");
+          Serial.println("\nParsing JSON");
 
           strcpy(APIKEY, json["APIKEY"]);
           CityID = json["CityID"].as<int>();
-
-          Serial.print("loaded APIKEY: ");
-          Serial.println(APIKEY);
 
           return true;
         }
@@ -116,7 +113,7 @@ bool loadConfigFile() {
   }
   else {
     // Error mounting file system
-    Serial.println("Failed to mount FS");
+    Serial.println("Failed to mount file system");
   }
 
   return false;
@@ -174,8 +171,6 @@ int getTemperature() {
 
   if (client.connect(servername, httpPort)) {
     // We now create a URI for the request
-    Serial.print("using APIKEY in url request: ");
-  Serial.println(APIKEY);
     String url = "/data/2.5/weather?id=" + String(CityID) + "&units=metric&APPID=" + APIKEY;
 
     // This will send the request to the server
@@ -202,21 +197,20 @@ int getTemperature() {
     float main_temp = main["temp"];
     int main_humidity = main["humidity"];
 
+    tempFloat = computeHeatIndex(main_temp, main_humidity);
+    // Round and store with out decimals.
+    tempInt = round(tempFloat);
+
+    /* TEMP DEBUG
     Serial.print("Main temp: ");
     Serial.println(main_temp);
     Serial.print("Main humidity: ");
     Serial.println(main_humidity);
-
-    tempFloat = computeHeatIndex(main_temp, main_humidity);
-
     Serial.print("Heat index: ");
     Serial.println(tempFloat);
-
-    // Round and store with out decimals.
-    tempInt = round(tempFloat);
-
     Serial.print("Rounded heat index: ");
     Serial.println(tempInt);
+    */
 
     return tempInt;
   }
@@ -316,8 +310,8 @@ void drawTime(String sHours, String sMinutes) {
   }
 }
 
-// Change to true when testing to force configuration every time we run
 void runWiFiM() {
+  // Change to true when testing to force configuration and reset settings every time we run
   bool forceConfig = false;
 
   bool spiffsSetup = loadConfigFile();
@@ -330,7 +324,10 @@ void runWiFiM() {
   WiFi.mode(WIFI_STA);
 
   // Reset settings (only for development)
-  wifiManager.resetSettings();
+  if (forceConfig) {
+    wifiManager.resetSettings();
+    wifiManager.setDebugOutput(false);
+    }
 
   // Set config save notify callback
   wifiManager.setSaveConfigCallback(saveConfigCallback);
@@ -383,11 +380,9 @@ void runWiFiM() {
 
   // Lets deal with the user config values
 
-  Serial.print("APIKEY before strncpy: ");
-  Serial.println(APIKEY);
-
   // Copy the string value
   strncpy(APIKEY, custom_text_box.getValue(), sizeof(APIKEY));
+  APIKEY[32] = '\0'; //add null terminator at the end
   Serial.print("APIKEY: ");
   Serial.println(APIKEY);
 
@@ -396,7 +391,7 @@ void runWiFiM() {
   Serial.print("CityID: ");
   Serial.println(CityID);
 
-  // Save the custom parameters to FS
+  // Save the custom parameters to file system
   if (shouldSaveConfig) {
     saveConfigFile();
   }
@@ -406,9 +401,6 @@ void setup() {
   // Initialize Serial Monitor
   Serial.begin(115200);
   while (!Serial);
-
-  Serial.print("APIKEY at start: ");
-  Serial.println(APIKEY);
 
   // Connect to Wifi
   runWiFiM();
@@ -434,8 +426,6 @@ void loop() {
 
   if (millis() - tempPreviousMillis >= tempInterval) {
     temperature = getTemperature();
-    Serial.print(temperature);
-    Serial.println(" degrees celsius.");
     tempPreviousMillis = millis();
   }
 
