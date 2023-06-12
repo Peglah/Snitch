@@ -26,6 +26,12 @@ const unsigned long displayInterval = 60 * 1000;  // interval at which to run (m
 String CityID = "REPLACE_WITH_YOUR_CITY";  //Jursla, SE
 String APIKEY = "REPLACE_WITH_YOUR_API_KEY";
 
+const bool childClock = false; // Override binary time and temperature. Show child clock instead
+const int StartStepOrangeHour = 4 * 60; // red To orange 
+const int StartStepGreenHour = 5 * 60; // orange To green
+const int AllGreenHour = 6 * 60; // all Green
+const int AllRedHour = 18 * 60; // all Red
+
 WiFiClient client; // Used to get temperature
 const char* servername = "api.openweathermap.org"; // remote server we will connect to
 
@@ -174,6 +180,43 @@ void drawTemperature(int temperature) {
   }
 }
 
+void drawChildClock(int TimeDaySec) {
+  if (TimeDaySec > AllRedHour) {
+    // All red
+    for (int i = 0; i  < NUM_LEDS; i++) {
+      leds[i].setRGB(1, 0, 0);
+    } 
+  }
+  else if (TimeDaySec > AllGreenHour) {
+    // All green
+    for (int i = 0; i < NUM_LEDS; i++) {
+      leds[i].setRGB(0, 1, 0);
+    } 
+  } 
+  else if (TimeDaySec > StartStepOrangeHour) {
+    // Orange to green
+    for (int i = 0; i < NUM_LEDS; i++) {
+      if (i < (TimeDaySec - StartStepOrangeHour) / 60 / NUM_LEDS ) {
+        leds[i].setRGB(0, 1, 0);
+      } 
+      else {
+        leds[i].setRGB(1, 0.5, 0);
+      } 
+    } 
+  }
+  else if (TimeDaySec > StartStepGreenHour) {
+    // Red to orange
+    for (int i = 0; i < NUM_LEDS; i++) {
+      if (i < (TimeDaySec - StartStepGreenHour) / 60 / NUM_LEDS ) {
+        leds[i].setRGB(1, 0.5, 0);
+      } 
+      else {
+        leds[i].setRGB(1, 0, 0);
+      } 
+    } 
+  }  
+} 
+
 void drawTime(String sHours, String sMinutes) {
   while (5 - sHours.length() > 0) {
     sHours = "0" + sHours;
@@ -286,7 +329,12 @@ void loop() {
     tempPreviousMillis = millis();
   }
 
-  if (doTime) { // Do the time thing
+  int TimeDaySec = timeClient.getHours() * 60 + timeClient.getSeconds();
+
+  if (childClock) {
+    drawChildClock(TimeDaySec);
+  } 
+  else if (doTime) { // Do the time thing
     // The getHours and getMinutes comes with the following format:
     // 16 and 00
     // We need to use the String function to make it binary.
