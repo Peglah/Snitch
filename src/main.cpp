@@ -17,7 +17,7 @@ const unsigned long timeInterval = 10 * 60 * 1000;  // interval at which to run 
 
 // Timer for when to update temperature
 unsigned long tempPreviousMillis = 0;               // will store last time
-const unsigned long tempInterval = 5* 60 * 1000;  // interval at which to run (milliseconds)
+const unsigned long tempInterval = 5 * 60 * 1000;  // interval at which to run (milliseconds)
 
 // Timer for when to switch between time and temperature
 unsigned long displayPreviousMillis = 0;               // will store last time
@@ -196,7 +196,7 @@ void drawChildClock(int TimeDaySec) {
   }
   else if (TimeDaySec > PreAwakeHour) {
     // )Red to Green
-    int threshold = (TimeDaySec - PreAwakeHour) / (60 * (60 / NUM_LEDS));
+    int threshold = (TimeDaySec - PreAwakeHour) / 60 / 3.75);
     for (int i = 0; i < NUM_LEDS; i++) {
       if (i < threshold) {
         leds[i].setRGB(0, 1, 0);
@@ -320,7 +320,7 @@ void loop() {
   }
 
   if (childClock) {
-    int TimeDaySec = timeClient.getHours() * 3600 + timeClient.getSeconds();
+    int TimeDaySec = timeClient.getHours() * 3600 timeClient.getMinutes * 60 + timeClient.getSeconds();
     drawChildClock(TimeDaySec);
   }
   else if (doTime) { // Do the time thing
