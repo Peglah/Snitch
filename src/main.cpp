@@ -297,8 +297,6 @@ void setup() {
   timeClient.begin();
   timeClient.update();
 
-  temperature = getTemperature();
-
   FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);
 }
 
