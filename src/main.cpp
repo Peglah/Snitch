@@ -26,7 +26,7 @@ const unsigned long displayInterval = 60 * 1000;  // interval at which to run (m
 String CityID = "REPLACE_WITH_YOUR_CITY";  //Jursla, SE
 String APIKEY = "REPLACE_WITH_YOUR_API_KEY";
 
-const bool childClock = true; // Override binary time and temperature. Show child clock instead
+const bool childClock = false; // Override binary time and temperature. Show child clock instead
 
 // Time in seconds
 const int AwakeHour = 6 * 3600; // all Green
@@ -196,7 +196,7 @@ void drawChildClock(int TimeDaySec) {
   }
   else if (TimeDaySec > PreAwakeHour) {
     // )Red to Green
-    int threshold = (TimeDaySec - PreAwakeHour) / (60 * (60 / NUM_LEDS));
+    int threshold = (TimeDaySec - PreAwakeHour) / 60 / 3.75;
     for (int i = 0; i < NUM_LEDS; i++) {
       if (i < threshold) {
         leds[i].setRGB(0, 1, 0);
@@ -303,27 +303,19 @@ void setup() {
 }
 
 void loop() {
-  // Don't update from internet every second. Instead update every
-  // "interval" (default 10 mins).
-  if (millis() - timePreviousMillis >= timeInterval) {
-    while (!timeClient.update()) {
-      timeClient.forceUpdate();
-    }
-    timePreviousMillis = millis();
-  }
-
-  if (millis() - tempPreviousMillis >= tempInterval) {
-    temperature = getTemperature();
-    Serial.print(temperature);
-    Serial.println(" degrees celsius.");
-    tempPreviousMillis = millis();
-  }
-
   if (childClock) {
-    int TimeDaySec = timeClient.getHours() * 3600 + timeClient.getSeconds();
+    int TimeDaySec = timeClient.getHours() * 3600 + timeClient.getMinutes() * 60 + timeClient.getSeconds();
     drawChildClock(TimeDaySec);
   }
   else if (doTime) { // Do the time thing
+    // Don't update from internet every second. Instead update every
+    // "interval" (default 10 mins).
+    if (millis() - timePreviousMillis >= timeInterval) {
+      while (!timeClient.update()) {
+        timeClient.forceUpdate();
+      }
+      timePreviousMillis = millis();
+    }
     // The getHours and getMinutes comes with the following format:
     // 16 and 00
     // We need to use the String function to make it binary.
@@ -333,6 +325,12 @@ void loop() {
     drawTime(sHours, sMinutes);
   }
   else { // Do the temp thing
+    if (millis() - tempPreviousMillis >= tempInterval) {
+      temperature = getTemperature();
+      Serial.print(temperature);
+      Serial.println(" degrees celsius.");
+      tempPreviousMillis = millis();
+    }
     drawTemperature(temperature);
   }
 
