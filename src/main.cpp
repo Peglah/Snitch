@@ -17,7 +17,7 @@ const unsigned long timeInterval = 10 * 60 * 1000;  // interval at which to run 
 
 // Timer for when to update temperature
 unsigned long tempPreviousMillis = 0;               // will store last time
-const unsigned long tempInterval = 5* 60 * 1000;  // interval at which to run (milliseconds)
+const unsigned long tempInterval = 5 * 60 * 1000;  // interval at which to run (milliseconds)
 
 // Timer for when to switch between time and temperature
 unsigned long displayPreviousMillis = 0;               // will store last time
