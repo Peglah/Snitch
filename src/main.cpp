@@ -195,8 +195,10 @@ void drawChildClock(int TimeDaySec) {
     }
   }
   else if (TimeDaySec > PreAwakeHour) {
-    // )Red to Green
-    int threshold = (TimeDaySec - PreAwakeHour) / 60 / 3.75;
+    // Red to Green
+
+    float threshold = static_cast<float>(TimeDaySec - PreAwakeHour) / (60.0 * 3.75);
+
     for (int i = 0; i < NUM_LEDS; i++) {
       if (i < threshold) {
         leds[i].setRGB(0, 1, 0);
