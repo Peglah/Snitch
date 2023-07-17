@@ -26,10 +26,10 @@ const unsigned long displayInterval = 60 * 1000;  // interval at which to run (m
 String CityID = "REPLACE_WITH_YOUR_CITY";  //Jursla, SE
 String APIKEY = "REPLACE_WITH_YOUR_API_KEY";
 
-const bool childClock = false; // Override binary time and temperature. Show child clock instead
+const bool childClock = true; // Override binary time and temperature. Show child clock instead
 
 // Time in seconds
-const int AwakeHour = 6 * 3600; // all Green
+const int AwakeHour = 7 * 3600; // all Green
 const int SleepHour = 18 * 3600; // all Red
 const int PreAwakeHour = AwakeHour - (1 * 3600); // Red to Green
 
@@ -261,9 +261,9 @@ void connectWifi() {
 
   // reset settings - wipe stored credentials for testing
   // these are stored by the esp library
-  wifiManager.resetSettings();
+  //wifiManager.resetSettings();
   //Debug is enabled by default on Serial in non-stable releases. To disable add before autoConnect/startConfigPortal
-  //wifiManager.setDebugOutput(false);
+  wifiManager.setDebugOutput(false);
 
   // Automatically connect using saved credentials,
   // if connection fails, it starts an access point with the specified name ( "AutoConnectAP"),
@@ -298,6 +298,14 @@ void setup() {
   timeClient.update();
 
   FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);
+
+  // Startup animation
+  for(int i = 0; i < NUM_LEDS; i++) {
+    leds[i] = CHSV(i * (255 / NUM_LEDS), 255, 255); // sets the color
+    FastLED.show(); // updates the strip to show the new color
+    delay(125); // waits for a bit before moving on to the next LED
+    leds[i] = CRGB::Black; // resets the LED to off after it's been lit
+  }
 }
 
 void loop() {
