@@ -5,6 +5,7 @@
 #include <FastLED.h>
 
 #define projectName "ESP32-Snitch"
+#define DEBUG false
 
 #define NUM_LEDS 16
 #define DATA_PIN 12
@@ -23,7 +24,11 @@ int green[3] = {0, brightness, 0};
 CRGB leds[NUM_LEDS];
 
 WiFiUDP ntpUDP; // Used by NTPClient to get time
-NTPClient timeClient(ntpUDP, "se.pool.ntp.org", 7200, 60000);
+
+// Summer time
+//NTPClient timeClient(ntpUDP, "se.pool.ntp.org", 7200, 60000);
+// Winter time
+NTPClient timeClient(ntpUDP, "se.pool.ntp.org", 3600, 60000);
 
 unsigned long lastNTPUpdate = 0; // Stores the last time the NTP client was updated
 const unsigned long NTPUpdateInterval = 3600000; // Update interval for NTP client in milliseconds (1 hour)
@@ -144,6 +149,7 @@ void setup() {
   connectWifi();
 
   timeClient.begin();
+  timeClient.update(); // Update the NTP client
 
   FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);
 
@@ -167,6 +173,10 @@ void loop() {
 
   int TimeDaySec = timeClient.getHours() * 3600 + timeClient.getMinutes() * 60 + timeClient.getSeconds();
   drawChildClock(TimeDaySec);
+
+  if (DEBUG) {
+    Serial.println(timeClient.getFormattedTime());
+  }
 
   FastLED.show();
   delay(1000);
